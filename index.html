@@ -3,57 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brindavan Video Chat</title>
+    <title>Brindavan Direct Call</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: sans-serif; background: #222; }
-        #meet { width: 100%; height: 100%; border: none; }
-        .welcome-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: white; }
-        button { padding: 15px 30px; font-size: 18px; background: #0070f3; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 20px; }
-        button:hover { background: #0056b3; }
-        input { padding: 10px; font-size: 16px; border-radius: 5px; border: none; margin-top: 10px; width: 250px; text-align: center; }
+        body { 
+            margin: 0; 
+            background-color: #121212; 
+            font-family: sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            overflow: hidden;
+        }
+        
+        /* Layout for Video Area */
+        .video-container {
+            position: relative;
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+
+        /* Remote Video (The Friend) - Full Screen */
+        #remote-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: #000;
+        }
+
+        /* Local Video (You) - Small Box */
+        #local-video {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 150px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid white;
+            background: #333;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            z-index: 2;
+        }
+
+        /* Control Bar & Status */
+        .controls {
+            padding: 15px;
+            background: #1e1e1e;
+            color: white;
+            text-align: center;
+            z-index: 10;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            background: #25D366; /* WhatsApp Green style */
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover { background: #1faa51; }
+        
+        #status { margin-bottom: 10px; font-size: 14px; color: #aaa; }
+        .hidden { display: none; }
     </style>
-    <script src='https://meet.jit.si/external_api.js'></script>
 </head>
 <body>
 
-    <div id="meet" style="display:none;"></div>
+    <div class="video-container">
+        <video id="remote-video" autoplay playsinline></video>
+        <video id="local-video" autoplay playsinline muted></video>
+    </div>
 
-    <div id="welcome" class="welcome-screen">
-        <h1>Brindavan Video Chat</h1>
-        <p>Simple, secure, and free.</p>
-        <button onclick="createRoom()">Start Instant Meeting</button>
+    <div class="controls">
+        <p id="status">Initializing secure connection...</p>
+        <button id="copy-btn" class="hidden" onclick="copyLink()">📋 Copy Invite Link</button>
+        <button id="join-btn" class="hidden" onclick="joinCall()">📞 Join Call</button>
     </div>
 
     <script>
-        const domain = 'meet.jit.si';
-        // Check if there is a "?room=" in the URL
-        const params = new URLSearchParams(window.location.search);
-        const roomID = params.get('room');
+        // 1. Setup PeerJS
+        const peer = new Peer(); // Auto-generates a random ID for you
+        let myStream;
+        
+        const localVideo = document.getElementById('local-video');
+        const remoteVideo = document.getElementById('remote-video');
+        const statusText = document.getElementById('status');
+        const copyBtn = document.getElementById('copy-btn');
+        const joinBtn = document.getElementById('join-btn');
 
-        if (roomID) {
-            // IF ROOM EXISTS: Hide welcome screen, show video
-            document.getElementById('welcome').style.display = 'none';
-            document.getElementById('meet').style.display = 'block';
+        // Check URL for a "friend's ID" (if you are the guest)
+        const urlParams = new URLSearchParams(window.location.search);
+        const friendId = urlParams.get('call');
 
-            const options = {
-                roomName: 'BrindavanChat-' + roomID, // Unique room name
-                width: '100%',
-                height: '100%',
-                parentNode: document.querySelector('#meet'),
-                lang: 'en',
-                configOverwrite: { 
-                    startWithAudioMuted: false, 
-                    startWithVideoMuted: false 
-                },
-            };
-            const api = new JitsiMeetExternalAPI(domain, options);
+        // 2. Start Camera & Microphone immediately
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            .then(stream => {
+                myStream = stream;
+                localVideo.srcObject = stream;
+                statusText.innerText = "Camera ready. Connecting to network...";
+                
+                // Once connected to Peer server
+                peer.on('open', (id) => {
+                    if (!friendId) {
+                        // YOU ARE THE HOST
+                        statusText.innerText = "Ready! Send this link to your friend:";
+                        copyBtn.classList.remove('hidden');
+                    } else {
+                        // YOU ARE THE GUEST
+                        statusText.innerText = "Connected to friend. Click Join.";
+                        joinBtn.classList.remove('hidden');
+                    }
+                });
+            })
+            .catch(err => {
+                statusText.innerText = "Error: Please allow Camera/Mic access.";
+                console.error(err);
+            });
+
+        // 3. Handle Incoming Calls (If you are Host)
+        peer.on('call', (call) => {
+            statusText.innerText = "Connecting...";
+            call.answer(myStream); // Answer automatically with your stream
+            call.on('stream', (userVideoStream) => {
+                remoteVideo.srcObject = userVideoStream;
+                statusText.innerText = "Connected! 🟢";
+                copyBtn.classList.add('hidden'); // Hide button during call
+            });
+        });
+
+        // 4. Handle Joining (If you are Guest)
+        function joinCall() {
+            statusText.innerText = "Calling friend...";
+            joinBtn.classList.add('hidden');
+            
+            const call = peer.call(friendId, myStream); // Call the host
+            call.on('stream', (userVideoStream) => {
+                remoteVideo.srcObject = userVideoStream;
+                statusText.innerText = "Connected! 🟢";
+            });
         }
 
-        function createRoom() {
-            // Generate a random room name (e.g., room-4821)
-            const randomRoom = 'room-' + Math.floor(Math.random() * 100000);
-            // Reload the page with the new room ID
-            window.location.search = '?room=' + randomRoom;
+        // 5. Copy Link Function
+        function copyLink() {
+            const currentUrl = window.location.href.split('?')[0];
+            const inviteLink = `${currentUrl}?call=${peer.id}`;
+            
+            navigator.clipboard.writeText(inviteLink).then(() => {
+                alert("Link Copied! Send it to your friend.");
+            });
         }
     </script>
 </body>
