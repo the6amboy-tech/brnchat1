@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brindavan Video Chat</title>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: sans-serif; background: #222; }
+        #meet { width: 100%; height: 100%; border: none; }
+        .welcome-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: white; }
+        button { padding: 15px 30px; font-size: 18px; background: #0070f3; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 20px; }
+        button:hover { background: #0056b3; }
+        input { padding: 10px; font-size: 16px; border-radius: 5px; border: none; margin-top: 10px; width: 250px; text-align: center; }
+    </style>
+    <script src='https://meet.jit.si/external_api.js'></script>
+</head>
+<body>
+
+    <div id="meet" style="display:none;"></div>
+
+    <div id="welcome" class="welcome-screen">
+        <h1>Brindavan Video Chat</h1>
+        <p>Simple, secure, and free.</p>
+        <button onclick="createRoom()">Start Instant Meeting</button>
+    </div>
+
+    <script>
+        const domain = 'meet.jit.si';
+        // Check if there is a "?room=" in the URL
+        const params = new URLSearchParams(window.location.search);
+        const roomID = params.get('room');
+
+        if (roomID) {
+            // IF ROOM EXISTS: Hide welcome screen, show video
+            document.getElementById('welcome').style.display = 'none';
+            document.getElementById('meet').style.display = 'block';
+
+            const options = {
+                roomName: 'BrindavanChat-' + roomID, // Unique room name
+                width: '100%',
+                height: '100%',
+                parentNode: document.querySelector('#meet'),
+                lang: 'en',
+                configOverwrite: { 
+                    startWithAudioMuted: false, 
+                    startWithVideoMuted: false 
+                },
+            };
+            const api = new JitsiMeetExternalAPI(domain, options);
+        }
+
+        function createRoom() {
+            // Generate a random room name (e.g., room-4821)
+            const randomRoom = 'room-' + Math.floor(Math.random() * 100000);
+            // Reload the page with the new room ID
+            window.location.search = '?room=' + randomRoom;
+        }
+    </script>
+</body>
+</html>
