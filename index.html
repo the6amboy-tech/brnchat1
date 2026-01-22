@@ -3,261 +3,174 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brindavan Connect | Video & Chat</title>
-    
+    <title>Brindavan Room</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        :root { --primary: #2563eb; --dark: #0f172a; --glass: rgba(30, 41, 59, 0.7); --text: #f8fafc; --green: #22c55e; --red: #ef4444; }
-        body { margin: 0; background-color: var(--dark); font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; display: flex; }
-
-        /* --- LAYOUT --- */
-        .main-stage { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; background: #000; }
+        body { margin: 0; background: #0f172a; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; color: white; }
         
-        /* Video Elements */
-        #remote-video { width: 100%; height: 100%; object-fit: contain; }
-        #local-video { position: absolute; bottom: 100px; right: 20px; width: 200px; height: 150px; border-radius: 12px; background: #333; border: 2px solid rgba(255,255,255,0.2); object-fit: cover; transform: scaleX(-1); z-index: 10; transition: all 0.3s; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        #local-video:hover { transform: scaleX(-1) scale(1.05); border-color: var(--primary); cursor: grab; }
+        /* VIDEO AREA */
+        .video-stage { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; background: black; }
+        video { width: 100%; height: 100%; object-fit: contain; }
+        #local-video { position: absolute; bottom: 20px; right: 20px; width: 150px; height: 100px; background: #333; border: 2px solid white; transform: scaleX(-1); border-radius: 8px; }
+        #remote-video { transform: scaleX(-1); }
 
-        /* --- CHAT SIDEBAR --- */
-        .chat-sidebar { width: 320px; background: var(--glass); backdrop-filter: blur(10px); border-left: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.3s ease; position: absolute; right: 0; top: 0; bottom: 80px; z-index: 20; }
-        .chat-sidebar.open { transform: translateX(0); position: relative; bottom: 0; }
+        /* MENU / LOGIN AREA */
+        #menu-overlay { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.95); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         
-        .chat-header { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); font-weight: bold; color: white; display: flex; justify-content: space-between; }
-        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        
-        .msg { padding: 10px 15px; border-radius: 15px; max-width: 85%; font-size: 14px; line-height: 1.4; word-wrap: break-word; }
-        .msg.me { align-self: flex-end; background: var(--primary); color: white; border-bottom-right-radius: 2px; }
-        .msg.friend { align-self: flex-start; background: rgba(255,255,255,0.1); color: #ddd; border-bottom-left-radius: 2px; }
-        .sys-msg { align-self: center; font-size: 12px; color: #888; margin: 5px 0; }
+        .card { background: #1e293b; padding: 40px; border-radius: 20px; text-align: center; width: 90%; max-width: 350px; border: 1px solid #334155; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        h1 { margin: 0 0 10px 0; color: #60a5fa; }
+        p { color: #94a3b8; margin-bottom: 20px; }
 
-        .chat-input-area { padding: 15px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; gap: 10px; }
-        #chat-input { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 10px; border-radius: 20px; outline: none; }
-        #send-btn { background: var(--primary); border: none; width: 40px; height: 40px; border-radius: 50%; color: white; cursor: pointer; }
+        input { width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 10px; border: 1px solid #334155; background: #0f172a; color: white; font-size: 18px; text-align: center; box-sizing: border-box; outline: none; transition: 0.3s; }
+        input:focus { border-color: #60a5fa; }
 
-        /* --- CONTROLS --- */
-        .controls-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--glass); padding: 10px 30px; border-radius: 50px; display: flex; gap: 15px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); z-index: 30; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .btn-group { display: flex; gap: 10px; }
+        button { flex: 1; padding: 15px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; color: white; }
         
-        .btn-control { width: 50px; height: 50px; border-radius: 50%; border: none; font-size: 18px; color: white; cursor: pointer; background: rgba(255,255,255,0.1); transition: 0.2s; display: flex; align-items: center; justify-content: center; position: relative; }
-        .btn-control:hover { background: rgba(255,255,255,0.2); transform: translateY(-3px); }
-        .btn-red { background: var(--red); }
-        .btn-red:hover { background: #dc2626; }
-        .btn-active { background: var(--primary); }
+        .btn-create { background: #2563eb; } /* Blue */
+        .btn-create:hover { background: #1d4ed8; }
         
-        .badge { position: absolute; top: -5px; right: -5px; background: var(--red); color: white; font-size: 10px; padding: 2px 6px; border-radius: 10px; display: none; }
+        .btn-join { background: #16a34a; } /* Green */
+        .btn-join:hover { background: #15803d; }
 
-        /* --- STATUS OVERLAY --- */
-        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 50; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
-        .card { background: #1e293b; padding: 40px; border-radius: 20px; text-align: center; max-width: 400px; width: 90%; border: 1px solid rgba(255,255,255,0.1); color: white; }
-        .link-box { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; font-family: monospace; color: var(--green); margin: 20px 0; word-break: break-all; border: 1px dashed rgba(255,255,255,0.2); }
+        /* IN-CALL CONTROLS */
+        .controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; z-index: 50; }
+        .circle-btn { width: 50px; height: 50px; border-radius: 50%; border: none; cursor: pointer; font-size: 20px; color: white; background: rgba(255,255,255,0.1); backdrop-filter: blur(5px); }
+        .btn-red { background: #ef4444; }
+
         .hidden { display: none !important; }
-        
-        /* Mobile */
-        @media (max-width: 768px) {
-            .chat-sidebar { position: fixed; width: 100%; top: 0; bottom: 0; z-index: 40; transform: translateY(100%); }
-            .chat-sidebar.open { transform: translateY(0); }
-            .controls-bar { bottom: 20px; padding: 10px 20px; gap: 10px; width: 90%; justify-content: space-around; }
-            #local-video { width: 120px; height: 90px; bottom: 100px; }
-            .btn-control { width: 45px; height: 45px; }
-        }
     </style>
 </head>
 <body>
 
-    <div class="main-stage">
+    <div class="video-stage">
         <video id="remote-video" autoplay playsinline></video>
         <video id="local-video" autoplay playsinline muted></video>
-    </div>
-
-    <div class="chat-sidebar" id="chat-sidebar">
-        <div class="chat-header">
-            <span>Meeting Chat</span>
-            <span style="cursor:pointer;" onclick="toggleChat()"><i class="fas fa-times"></i></span>
-        </div>
-        <div class="chat-messages" id="chat-messages">
-            <div class="sys-msg">Messages are private & not saved.</div>
-        </div>
-        <div class="chat-input-area">
-            <input type="text" id="chat-input" placeholder="Type a message..." onkeypress="handleEnter(event)">
-            <button id="send-btn" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+        
+        <div class="controls hidden" id="controls">
+            <button class="circle-btn btn-red" onclick="endCall()"><i class="fas fa-phone-slash"></i></button>
         </div>
     </div>
 
-    <div class="controls-bar">
-        <button class="btn-control" onclick="toggleAudio()" id="btn-audio"><i class="fas fa-microphone"></i></button>
-        <button class="btn-control" onclick="toggleVideo()" id="btn-video"><i class="fas fa-video"></i></button>
-        <button class="btn-control" onclick="shareScreen()" id="btn-screen" title="Share Screen"><i class="fas fa-desktop"></i></button>
-        <button class="btn-control" onclick="toggleChat()" id="btn-chat">
-            <i class="fas fa-comment-alt"></i>
-            <span class="badge" id="chat-badge">New</span>
-        </button>
-        <button class="btn-control btn-red" onclick="endCall()"><i class="fas fa-phone-slash"></i></button>
-    </div>
-
-    <div id="status-overlay" class="overlay">
+    <div id="menu-overlay">
         <div class="card">
-            <h2 id="status-title">Starting...</h2>
-            <p id="status-desc">Initializing secure connection.</p>
-            <div id="invite-area" class="hidden">
-                <div class="link-box" id="link-text">Generating...</div>
-                <button class="btn-control btn-active" style="width:100%; border-radius:10px;" onclick="copyLink()">
-                    <i class="fas fa-copy"></i> Copy Link
-                </button>
+            <h1>Brindavan</h1>
+            <p>Enter a Room Code to start.</p>
+            
+            <input type="number" id="room-code" placeholder="e.g. 101" autocomplete="off">
+            
+            <div class="btn-group">
+                <button class="btn-create" onclick="startCall('create')">Create</button>
+                <button class="btn-join" onclick="startCall('join')">Join</button>
             </div>
-            <button id="join-btn" class="btn-control btn-active hidden" style="width:100%; border-radius:10px; background:var(--green);" onclick="joinMeeting()">
-                <i class="fas fa-video"></i> Join Meeting
-            </button>
+            <p id="status-msg" style="margin-top:15px; font-size:12px; height:20px;"></p>
         </div>
     </div>
 
     <script>
-        // CONFIGURATION
-        const peer = new Peer({ config: { 'iceServers': [ { url: 'stun:stun.l.google.com:19302' } ] } });
+        // CONFIG
+        const PREFIX = "brindavan-app-room-"; // Makes your room IDs unique
+        const peer = new Peer({ config: { 'iceServers': [{ url: 'stun:stun.l.google.com:19302' }] } });
         
         let myStream;
-        let myScreenStream;
         let currentCall;
-        let dataConnection; // For Chat
-        const urlParams = new URLSearchParams(window.location.search);
-        const friendId = urlParams.get('call');
 
-        // UI Refs
-        const localVideo = document.getElementById('local-video');
-        const remoteVideo = document.getElementById('remote-video');
-        const overlay = document.getElementById('status-overlay');
-        const msgsArea = document.getElementById('chat-messages');
+        // UI ELEMENTS
+        const menu = document.getElementById('menu-overlay');
+        const controls = document.getElementById('controls');
+        const statusMsg = document.getElementById('status-msg');
+        const localVid = document.getElementById('local-video');
+        const remoteVid = document.getElementById('remote-video');
 
-        // 1. INITIALIZE
-        navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-            myStream = stream;
-            localVideo.srcObject = stream;
-            
-            peer.on('open', (id) => {
-                if (!friendId) {
-                    // HOST
-                    document.getElementById('status-title').innerText = "You are the Host";
-                    document.getElementById('status-desc').innerText = "Share this link to start:";
-                    document.getElementById('invite-area').classList.remove('hidden');
-                    document.getElementById('link-text').innerText = window.location.href.split('?')[0] + '?call=' + id;
-                } else {
-                    // GUEST
-                    document.getElementById('status-title').innerText = "Ready to Join?";
-                    document.getElementById('status-desc').innerText = "Camera & Mic ready.";
-                    document.getElementById('join-btn').classList.remove('hidden');
-                }
-            });
+        // 1. SETUP CAMERA
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            .then(stream => {
+                myStream = stream;
+                localVid.srcObject = stream;
+            })
+            .catch(err => alert("Camera blocked! Please allow access."));
 
-            // HANDLE INCOMING CALL (Host)
-            peer.on('call', call => {
-                overlay.classList.add('hidden');
-                call.answer(stream);
-                handleCall(call);
-            });
+        // 2. MAIN LOGIC
+        function startCall(action) {
+            const code = document.getElementById('room-code').value.trim();
+            if (!code) {
+                statusMsg.innerText = "Please enter a number first!";
+                statusMsg.style.color = "red";
+                return;
+            }
 
-            // HANDLE INCOMING CHAT CONNECTION
-            peer.on('connection', conn => {
-                setupChat(conn);
-            });
+            const roomID = PREFIX + code;
+            statusMsg.style.color = "#94a3b8";
 
-        }).catch(err => alert("Please allow Camera access!"));
-
-        // 2. JOIN MEETING (Guest)
-        function joinMeeting() {
-            overlay.classList.add('hidden');
-            const call = peer.call(friendId, myStream);
-            handleCall(call);
-            
-            // Connect Data Channel for Chat
-            const conn = peer.connect(friendId);
-            conn.on('open', () => setupChat(conn));
-        }
-
-        // 3. CORE VIDEO LOGIC
-        function handleCall(call) {
-            currentCall = call;
-            call.on('stream', remoteStream => {
-                remoteVideo.srcObject = remoteStream;
-            });
-            call.on('close', () => location.reload());
-        }
-
-        // 4. SCREEN SHARING
-        function shareScreen() {
-            navigator.mediaDevices.getDisplayMedia({ video: true }).then(screenStream => {
-                const videoTrack = screenStream.getVideoTracks()[0];
-                // Replace video track in current peer connection
-                const sender = currentCall.peerConnection.getSenders().find(s => s.track.kind === 'video');
-                sender.replaceTrack(videoTrack);
+            if (action === 'create') {
+                // BECOME THE HOST (ID = RoomCode)
+                // We must destroy the old random ID and create a new one with the custom name
+                peer.destroy(); 
+                const hostPeer = new Peer(roomID);
                 
-                // Show local screen in small box
-                localVideo.srcObject = screenStream;
-                document.getElementById('btn-screen').classList.add('btn-active');
+                statusMsg.innerText = "Creating Room... Wait.";
+                
+                hostPeer.on('open', (id) => {
+                    statusMsg.innerText = "Room Ready! Tell friend to join " + code;
+                    statusMsg.style.color = "#4ade80";
+                    // Wait for them to call us
+                    hostPeer.on('call', call => {
+                        enterCallMode();
+                        call.answer(myStream);
+                        handleStream(call);
+                    });
+                });
 
-                // When user stops sharing
-                videoTrack.onended = () => {
-                    sender.replaceTrack(myStream.getVideoTracks()[0]);
-                    localVideo.srcObject = myStream;
-                    document.getElementById('btn-screen').classList.remove('btn-active');
-                };
+                hostPeer.on('error', (err) => {
+                    if(err.type === 'unavailable-id') {
+                        statusMsg.innerText = "Room " + code + " is busy! Try another number.";
+                        statusMsg.style.color = "red";
+                    } else {
+                        statusMsg.innerText = "Network Error. Try again.";
+                    }
+                });
+
+            } else {
+                // JOIN THE HOST
+                statusMsg.innerText = "Connecting to Room " + code + "...";
+                const call = peer.call(roomID, myStream);
+                
+                // If connection works
+                enterCallMode();
+                handleStream(call);
+
+                // If connection fails (after 5 seconds, assume room doesn't exist)
+                setTimeout(() => {
+                    if(!currentCall) {
+                        statusMsg.innerText = "Room not found or busy.";
+                        statusMsg.style.color = "red";
+                        menu.style.display = 'flex'; // Show menu again
+                        controls.classList.add('hidden');
+                    }
+                }, 5000);
+            }
+        }
+
+        // 3. HANDLE VIDEO CONNECTION
+        function handleStream(call) {
+            currentCall = call;
+            call.on('stream', (remoteStream) => {
+                remoteVid.srcObject = remoteStream;
             });
+            call.on('close', () => endCall());
+            call.on('error', () => endCall());
         }
 
-        // 5. CHAT LOGIC
-        function setupChat(conn) {
-            dataConnection = conn;
-            conn.on('data', data => {
-                addMessage(data, 'friend');
-                if (!document.getElementById('chat-sidebar').classList.contains('open')) {
-                    document.getElementById('chat-badge').style.display = 'block';
-                }
-            });
+        function enterCallMode() {
+            menu.style.display = 'none'; // Hide menu
+            controls.classList.remove('hidden'); // Show hangup button
         }
 
-        function sendMessage() {
-            const input = document.getElementById('chat-input');
-            const msg = input.value;
-            if (!msg || !dataConnection) return;
-            
-            dataConnection.send(msg); // Send to friend
-            addMessage(msg, 'me'); // Show locally
-            input.value = '';
-        }
-
-        function addMessage(msg, type) {
-            const div = document.createElement('div');
-            div.className = 'msg ' + type;
-            div.innerText = msg;
-            msgsArea.appendChild(div);
-            msgsArea.scrollTop = msgsArea.scrollHeight; // Auto scroll
-        }
-
-        function toggleChat() {
-            const sb = document.getElementById('chat-sidebar');
-            sb.classList.toggle('open');
-            document.getElementById('chat-badge').style.display = 'none';
-        }
-
-        function handleEnter(e) {
-            if(e.key === 'Enter') sendMessage();
-        }
-
-        // 6. UTILS
-        function toggleAudio() {
-            myStream.getAudioTracks()[0].enabled = !myStream.getAudioTracks()[0].enabled;
-            document.getElementById('btn-audio').classList.toggle('btn-red');
-        }
-        function toggleVideo() {
-            myStream.getVideoTracks()[0].enabled = !myStream.getVideoTracks()[0].enabled;
-            document.getElementById('btn-video').classList.toggle('btn-red');
-        }
-        function copyLink() {
-            navigator.clipboard.writeText(document.getElementById('link-text').innerText);
-            alert("Link Copied!");
-        }
         function endCall() {
-            if(currentCall) currentCall.close();
-            window.location.href = window.location.pathname;
+            if (currentCall) currentCall.close();
+            location.reload(); // Reset app
         }
     </script>
 </body>
