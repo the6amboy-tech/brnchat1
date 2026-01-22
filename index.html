@@ -3,214 +3,261 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brindavan Pro Connect</title>
+    <title>Brindavan Ultimate | Video & Chat</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        :root { --primary-color: #007bff; --danger-color: #dc3545; --bg-color: #121212; }
-        body { margin: 0; background-color: var(--bg-color); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        :root { --primary: #2563eb; --dark: #0f172a; --glass: rgba(30, 41, 59, 0.7); --text: #f8fafc; --green: #22c55e; --red: #ef4444; }
+        body { margin: 0; background-color: var(--dark); font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; display: flex; }
 
-        /* --- VIDEO AREA --- */
-        .video-container { position: relative; flex: 1; display: flex; justify-content: center; align-items: center; background: #000; }
+        /* --- LAYOUT --- */
+        .main-stage { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; background: #000; }
         
-        /* Friend's Video (Full Screen) */
-        #remote-video { width: 100%; height: 100%; object-fit: contain; transform: scaleX(-1); }
-        
-        /* Your Video (Floating Picture-in-Picture) */
-        #local-video { position: absolute; bottom: 100px; right: 20px; width: 150px; height: 110px; object-fit: cover; border-radius: 12px; border: 2px solid rgba(255,255,255,0.3); background: #333; transform: scaleX(-1); box-shadow: 0 8px 20px rgba(0,0,0,0.5); transition: all 0.3s ease; z-index: 10; }
-        #local-video:hover { transform: scaleX(-1) scale(1.05); border-color: #fff; cursor: grab; }
+        /* Video Elements */
+        #remote-video { width: 100%; height: 100%; object-fit: contain; }
+        #local-video { position: absolute; bottom: 100px; right: 20px; width: 200px; height: 150px; border-radius: 12px; background: #333; border: 2px solid rgba(255,255,255,0.2); object-fit: cover; transform: scaleX(-1); z-index: 10; transition: all 0.3s; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        #local-video:hover { transform: scaleX(-1) scale(1.05); border-color: var(--primary); cursor: grab; }
 
-        /* --- CONTROL BAR --- */
-        .controls-bar { height: 80px; background: #1e1e1e; display: flex; justify-content: center; align-items: center; gap: 20px; padding-bottom: 20px; }
+        /* --- CHAT SIDEBAR --- */
+        .chat-sidebar { width: 320px; background: var(--glass); backdrop-filter: blur(10px); border-left: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.3s ease; position: absolute; right: 0; top: 0; bottom: 80px; z-index: 20; }
+        .chat-sidebar.open { transform: translateX(0); position: relative; bottom: 0; }
         
-        .btn-control { width: 50px; height: 50px; border-radius: 50%; border: none; font-size: 20px; color: white; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; background: #333; }
-        .btn-control:hover { background: #555; transform: translateY(-2px); }
-        .btn-danger { background: var(--danger-color); }
-        .btn-danger:hover { background: #bb2d3b; }
+        .chat-header { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); font-weight: bold; color: white; display: flex; justify-content: space-between; }
+        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
         
-        /* --- OVERLAY MESSAGES --- */
-        .status-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); color: white; padding: 30px; border-radius: 15px; text-align: center; z-index: 20; backdrop-filter: blur(8px); border: 1px solid #444; width: 80%; max-width: 400px; }
-        .status-overlay h2 { margin-top: 0; font-weight: 600; }
-        .invite-link-box { background: #222; padding: 12px; border-radius: 5px; margin: 15px 0; font-family: monospace; font-size: 14px; color: #aaa; word-break: break-all; border: 1px solid #444; }
+        .msg { padding: 10px 15px; border-radius: 15px; max-width: 85%; font-size: 14px; line-height: 1.4; word-wrap: break-word; }
+        .msg.me { align-self: flex-end; background: var(--primary); color: white; border-bottom-right-radius: 2px; }
+        .msg.friend { align-self: flex-start; background: rgba(255,255,255,0.1); color: #ddd; border-bottom-left-radius: 2px; }
+        .sys-msg { align-self: center; font-size: 12px; color: #888; margin: 5px 0; }
+
+        .chat-input-area { padding: 15px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; gap: 10px; }
+        #chat-input { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 10px; border-radius: 20px; outline: none; }
+        #send-btn { background: var(--primary); border: none; width: 40px; height: 40px; border-radius: 50%; color: white; cursor: pointer; }
+
+        /* --- CONTROLS --- */
+        .controls-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--glass); padding: 10px 30px; border-radius: 50px; display: flex; gap: 15px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); z-index: 30; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        
+        .btn-control { width: 50px; height: 50px; border-radius: 50%; border: none; font-size: 18px; color: white; cursor: pointer; background: rgba(255,255,255,0.1); transition: 0.2s; display: flex; align-items: center; justify-content: center; position: relative; }
+        .btn-control:hover { background: rgba(255,255,255,0.2); transform: translateY(-3px); }
+        .btn-red { background: var(--red); }
+        .btn-red:hover { background: #dc2626; }
+        .btn-active { background: var(--primary); }
+        
+        .badge { position: absolute; top: -5px; right: -5px; background: var(--red); color: white; font-size: 10px; padding: 2px 6px; border-radius: 10px; display: none; }
+
+        /* --- STATUS OVERLAY --- */
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 50; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .card { background: #1e293b; padding: 40px; border-radius: 20px; text-align: center; max-width: 400px; width: 90%; border: 1px solid rgba(255,255,255,0.1); color: white; }
+        .link-box { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; font-family: monospace; color: var(--green); margin: 20px 0; word-break: break-all; border: 1px dashed rgba(255,255,255,0.2); }
         .hidden { display: none !important; }
         
-        /* Loading Spinner */
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 15px auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* Mobile Fixes */
-        @media (max-width: 600px) {
-            #local-video { width: 100px; height: 140px; bottom: 90px; right: 10px; }
+        /* Mobile */
+        @media (max-width: 768px) {
+            .chat-sidebar { position: fixed; width: 100%; top: 0; bottom: 0; z-index: 40; transform: translateY(100%); }
+            .chat-sidebar.open { transform: translateY(0); }
+            .controls-bar { bottom: 20px; padding: 10px 20px; gap: 10px; width: 90%; justify-content: space-around; }
+            #local-video { width: 120px; height: 90px; bottom: 100px; }
+            .btn-control { width: 45px; height: 45px; }
         }
     </style>
 </head>
 <body>
 
-    <div class="video-container">
+    <div class="main-stage">
         <video id="remote-video" autoplay playsinline></video>
         <video id="local-video" autoplay playsinline muted></video>
+    </div>
 
-        <div id="welcome-panel" class="status-overlay">
-            <div id="loading-spinner" class="loader"></div>
-            <h2 id="status-msg">Initializing...</h2>
-            <p id="sub-msg">Please allow camera access.</p>
-            
-            <div id="invite-section" class="hidden">
-                <div id="invite-link" class="invite-link-box">Generating link...</div>
-                <button class="btn-control" style="width: 100%; border-radius: 8px; background: #007bff;" onclick="copyLink()">
-                    <i class="fas fa-copy"></i> &nbsp; Copy Invite Link
-                </button>
-            </div>
+    <div class="chat-sidebar" id="chat-sidebar">
+        <div class="chat-header">
+            <span>Meeting Chat</span>
+            <span style="cursor:pointer;" onclick="toggleChat()"><i class="fas fa-times"></i></span>
         </div>
-
-        <div id="join-panel" class="status-overlay hidden">
-            <h2>Ready to Join?</h2>
-            <p>Your friend is waiting.</p>
-            <button class="btn-control" style="width: 100%; border-radius: 8px; background: #28a745;" onclick="joinCall()">
-                <i class="fas fa-video"></i> &nbsp; Join Call Now
-            </button>
+        <div class="chat-messages" id="chat-messages">
+            <div class="sys-msg">Messages are private & not saved.</div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chat-input" placeholder="Type a message..." onkeypress="handleEnter(event)">
+            <button id="send-btn" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
         </div>
     </div>
 
     <div class="controls-bar">
-        <button class="btn-control" onclick="toggleAudio()" id="btn-audio" title="Mute/Unmute">
-            <i class="fas fa-microphone"></i>
+        <button class="btn-control" onclick="toggleAudio()" id="btn-audio"><i class="fas fa-microphone"></i></button>
+        <button class="btn-control" onclick="toggleVideo()" id="btn-video"><i class="fas fa-video"></i></button>
+        <button class="btn-control" onclick="shareScreen()" id="btn-screen" title="Share Screen"><i class="fas fa-desktop"></i></button>
+        <button class="btn-control" onclick="toggleChat()" id="btn-chat">
+            <i class="fas fa-comment-alt"></i>
+            <span class="badge" id="chat-badge">New</span>
         </button>
-        <button class="btn-control" onclick="toggleVideo()" id="btn-video" title="Show/Hide Camera">
-            <i class="fas fa-video"></i>
-        </button>
-        <button class="btn-control btn-danger" onclick="endCall()" title="End Call">
-            <i class="fas fa-phone-slash"></i>
-        </button>
+        <button class="btn-control btn-red" onclick="endCall()"><i class="fas fa-phone-slash"></i></button>
+    </div>
+
+    <div id="status-overlay" class="overlay">
+        <div class="card">
+            <h2 id="status-title">Starting...</h2>
+            <p id="status-desc">Initializing secure connection.</p>
+            <div id="invite-area" class="hidden">
+                <div class="link-box" id="link-text">Generating...</div>
+                <button class="btn-control btn-active" style="width:100%; border-radius:10px;" onclick="copyLink()">
+                    <i class="fas fa-copy"></i> Copy Link
+                </button>
+            </div>
+            <button id="join-btn" class="btn-control btn-active hidden" style="width:100%; border-radius:10px; background:var(--green);" onclick="joinMeeting()">
+                <i class="fas fa-video"></i> Join Meeting
+            </button>
+        </div>
     </div>
 
     <script>
-        // --- CONFIGURATION ---
-        // We use Google's public STUN servers to punch through firewalls
-        const peerConfig = {
-            debug: 2, 
-            config: {'iceServers': [
-                { url: 'stun:stun.l.google.com:19302' },
-                { url: 'stun:stun1.l.google.com:19302' },
-                { url: 'stun:stun2.l.google.com:19302' }
-            ]}
-        };
-
-        const peer = new Peer(peerConfig); 
+        // CONFIGURATION
+        const peer = new Peer({ config: { 'iceServers': [ { url: 'stun:stun.l.google.com:19302' } ] } });
+        
         let myStream;
+        let myScreenStream;
         let currentCall;
+        let dataConnection; // For Chat
         const urlParams = new URLSearchParams(window.location.search);
         const friendId = urlParams.get('call');
 
-        // UI Elements
+        // UI Refs
         const localVideo = document.getElementById('local-video');
         const remoteVideo = document.getElementById('remote-video');
-        const welcomePanel = document.getElementById('welcome-panel');
-        const joinPanel = document.getElementById('join-panel');
-        const inviteLinkBox = document.getElementById('invite-link');
-        const inviteSection = document.getElementById('invite-section');
-        const statusMsg = document.getElementById('status-msg');
-        const subMsg = document.getElementById('sub-msg');
-        const spinner = document.getElementById('loading-spinner');
+        const overlay = document.getElementById('status-overlay');
+        const msgsArea = document.getElementById('chat-messages');
 
-        // --- 1. INITIALIZE CAMERA ---
+        // 1. INITIALIZE
         navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
             myStream = stream;
             localVideo.srcObject = stream;
             
-            // Camera is ready, now waiting for Network
-            statusMsg.innerText = "Connecting to Network...";
-
-            // --- 2. PEERJS EVENTS ---
             peer.on('open', (id) => {
-                spinner.style.display = 'none'; // Stop loading
-                
                 if (!friendId) {
-                    // HOST MODE
-                    statusMsg.innerText = "You are Online";
-                    subMsg.innerText = "Share this link with your friend:";
-                    inviteSection.classList.remove('hidden');
-                    
-                    const link = window.location.href.split('?')[0] + '?call=' + id;
-                    inviteLinkBox.innerText = link;
-                    inviteLinkBox.style.color = "#4ade80";
+                    // HOST
+                    document.getElementById('status-title').innerText = "You are the Host";
+                    document.getElementById('status-desc').innerText = "Share this link to start:";
+                    document.getElementById('invite-area').classList.remove('hidden');
+                    document.getElementById('link-text').innerText = window.location.href.split('?')[0] + '?call=' + id;
                 } else {
-                    // GUEST MODE
-                    welcomePanel.classList.add('hidden');
-                    joinPanel.classList.remove('hidden');
+                    // GUEST
+                    document.getElementById('status-title').innerText = "Ready to Join?";
+                    document.getElementById('status-desc').innerText = "Camera & Mic ready.";
+                    document.getElementById('join-btn').classList.remove('hidden');
                 }
             });
 
-            peer.on('error', (err) => {
-                spinner.style.display = 'none';
-                statusMsg.innerText = "Connection Failed";
-                statusMsg.style.color = "#ff4444";
-                subMsg.innerText = "Error: " + err.type;
-                console.error(err);
-                alert("Network Error: Try switching to Mobile Data or turning off AdBlock.");
-            });
-
-            // --- 3. INCOMING CALL (Host) ---
-            peer.on('call', (call) => {
-                welcomePanel.classList.add('hidden');
-                call.answer(stream); // Answer automatically
+            // HANDLE INCOMING CALL (Host)
+            peer.on('call', call => {
+                overlay.classList.add('hidden');
+                call.answer(stream);
                 handleCall(call);
             });
 
-        }).catch(err => {
-            spinner.style.display = 'none';
-            statusMsg.innerText = "Camera Blocked";
-            subMsg.innerText = "Please allow camera access in browser settings.";
-            console.error(err);
-        });
+            // HANDLE INCOMING CHAT CONNECTION
+            peer.on('connection', conn => {
+                setupChat(conn);
+            });
 
-        // --- 4. JOIN CALL (Guest) ---
-        function joinCall() {
-            joinPanel.classList.add('hidden');
+        }).catch(err => alert("Please allow Camera access!"));
+
+        // 2. JOIN MEETING (Guest)
+        function joinMeeting() {
+            overlay.classList.add('hidden');
             const call = peer.call(friendId, myStream);
             handleCall(call);
+            
+            // Connect Data Channel for Chat
+            const conn = peer.connect(friendId);
+            conn.on('open', () => setupChat(conn));
         }
 
-        // --- 5. CALL HANDLING ---
+        // 3. CORE VIDEO LOGIC
         function handleCall(call) {
             currentCall = call;
-            call.on('stream', (remoteStream) => {
+            call.on('stream', remoteStream => {
                 remoteVideo.srcObject = remoteStream;
             });
-            call.on('close', () => {
-                alert("Call Ended");
-                location.reload();
+            call.on('close', () => location.reload());
+        }
+
+        // 4. SCREEN SHARING
+        function shareScreen() {
+            navigator.mediaDevices.getDisplayMedia({ video: true }).then(screenStream => {
+                const videoTrack = screenStream.getVideoTracks()[0];
+                // Replace video track in current peer connection
+                const sender = currentCall.peerConnection.getSenders().find(s => s.track.kind === 'video');
+                sender.replaceTrack(videoTrack);
+                
+                // Show local screen in small box
+                localVideo.srcObject = screenStream;
+                document.getElementById('btn-screen').classList.add('btn-active');
+
+                // When user stops sharing
+                videoTrack.onended = () => {
+                    sender.replaceTrack(myStream.getVideoTracks()[0]);
+                    localVideo.srcObject = myStream;
+                    document.getElementById('btn-screen').classList.remove('btn-active');
+                };
             });
         }
 
-        // --- 6. CONTROLS ---
+        // 5. CHAT LOGIC
+        function setupChat(conn) {
+            dataConnection = conn;
+            conn.on('data', data => {
+                addMessage(data, 'friend');
+                if (!document.getElementById('chat-sidebar').classList.contains('open')) {
+                    document.getElementById('chat-badge').style.display = 'block';
+                }
+            });
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const msg = input.value;
+            if (!msg || !dataConnection) return;
+            
+            dataConnection.send(msg); // Send to friend
+            addMessage(msg, 'me'); // Show locally
+            input.value = '';
+        }
+
+        function addMessage(msg, type) {
+            const div = document.createElement('div');
+            div.className = 'msg ' + type;
+            div.innerText = msg;
+            msgsArea.appendChild(div);
+            msgsArea.scrollTop = msgsArea.scrollHeight; // Auto scroll
+        }
+
+        function toggleChat() {
+            const sb = document.getElementById('chat-sidebar');
+            sb.classList.toggle('open');
+            document.getElementById('chat-badge').style.display = 'none';
+        }
+
+        function handleEnter(e) {
+            if(e.key === 'Enter') sendMessage();
+        }
+
+        // 6. UTILS
         function toggleAudio() {
-            const track = myStream.getAudioTracks()[0];
-            track.enabled = !track.enabled;
-            const btn = document.getElementById('btn-audio');
-            btn.innerHTML = track.enabled ? '<i class="fas fa-microphone"></i>' : '<i class="fas fa-microphone-slash"></i>';
-            btn.style.background = track.enabled ? '#333' : '#dc3545';
+            myStream.getAudioTracks()[0].enabled = !myStream.getAudioTracks()[0].enabled;
+            document.getElementById('btn-audio').classList.toggle('btn-red');
         }
-
         function toggleVideo() {
-            const track = myStream.getVideoTracks()[0];
-            track.enabled = !track.enabled;
-            const btn = document.getElementById('btn-video');
-            btn.innerHTML = track.enabled ? '<i class="fas fa-video"></i>' : '<i class="fas fa-video-slash"></i>';
-            btn.style.background = track.enabled ? '#333' : '#dc3545';
+            myStream.getVideoTracks()[0].enabled = !myStream.getVideoTracks()[0].enabled;
+            document.getElementById('btn-video').classList.toggle('btn-red');
         }
-
         function copyLink() {
-            const text = inviteLinkBox.innerText;
-            navigator.clipboard.writeText(text).then(() => alert("Link Copied to Clipboard!"));
+            navigator.clipboard.writeText(document.getElementById('link-text').innerText);
+            alert("Link Copied!");
         }
-
         function endCall() {
             if(currentCall) currentCall.close();
-            window.location.href = window.location.pathname; 
+            window.location.href = window.location.pathname;
         }
     </script>
 </body>
