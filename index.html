@@ -4,42 +4,46 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Brindavan Pro Connect</title>
+    
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
         :root { --primary-color: #007bff; --danger-color: #dc3545; --bg-color: #121212; }
         body { margin: 0; background-color: var(--bg-color); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-        /* VIDEO AREA */
+        /* --- VIDEO AREA --- */
         .video-container { position: relative; flex: 1; display: flex; justify-content: center; align-items: center; background: #000; }
         
         /* Friend's Video (Full Screen) */
         #remote-video { width: 100%; height: 100%; object-fit: contain; transform: scaleX(-1); }
         
         /* Your Video (Floating Picture-in-Picture) */
-        #local-video { position: absolute; bottom: 100px; right: 20px; width: 180px; height: 120px; object-fit: cover; border-radius: 12px; border: 2px solid rgba(255,255,255,0.3); background: #333; transform: scaleX(-1); box-shadow: 0 8px 20px rgba(0,0,0,0.5); transition: all 0.3s ease; z-index: 10; }
-        #local-video:hover { transform: scaleX(-1) scale(1.05); border-color: #fff; }
+        #local-video { position: absolute; bottom: 100px; right: 20px; width: 150px; height: 110px; object-fit: cover; border-radius: 12px; border: 2px solid rgba(255,255,255,0.3); background: #333; transform: scaleX(-1); box-shadow: 0 8px 20px rgba(0,0,0,0.5); transition: all 0.3s ease; z-index: 10; }
+        #local-video:hover { transform: scaleX(-1) scale(1.05); border-color: #fff; cursor: grab; }
 
-        /* CONTROL BAR */
+        /* --- CONTROL BAR --- */
         .controls-bar { height: 80px; background: #1e1e1e; display: flex; justify-content: center; align-items: center; gap: 20px; padding-bottom: 20px; }
         
         .btn-control { width: 50px; height: 50px; border-radius: 50%; border: none; font-size: 20px; color: white; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; background: #333; }
         .btn-control:hover { background: #555; transform: translateY(-2px); }
         .btn-danger { background: var(--danger-color); }
         .btn-danger:hover { background: #bb2d3b; }
-        .btn-active { background: var(--primary-color); }
         
-        /* OVERLAY MESSAGES */
-        .status-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 30px; border-radius: 15px; text-align: center; z-index: 20; backdrop-filter: blur(5px); border: 1px solid #333; }
-        .status-overlay h2 { margin-top: 0; }
-        .invite-link-box { background: #333; padding: 10px; border-radius: 5px; margin: 15px 0; font-family: monospace; user-select: all; color: #00ff88; word-break: break-all; }
+        /* --- OVERLAY MESSAGES --- */
+        .status-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); color: white; padding: 30px; border-radius: 15px; text-align: center; z-index: 20; backdrop-filter: blur(8px); border: 1px solid #444; width: 80%; max-width: 400px; }
+        .status-overlay h2 { margin-top: 0; font-weight: 600; }
+        .invite-link-box { background: #222; padding: 12px; border-radius: 5px; margin: 15px 0; font-family: monospace; font-size: 14px; color: #aaa; word-break: break-all; border: 1px solid #444; }
         .hidden { display: none !important; }
         
-        /* MOBILE ADJUSTMENTS */
+        /* Loading Spinner */
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 15px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Mobile Fixes */
         @media (max-width: 600px) {
-            #local-video { width: 120px; height: 160px; bottom: 90px; right: 10px; }
-            .btn-control { width: 45px; height: 45px; font-size: 18px; }
+            #local-video { width: 100px; height: 140px; bottom: 90px; right: 10px; }
         }
     </style>
 </head>
@@ -50,19 +54,23 @@
         <video id="local-video" autoplay playsinline muted></video>
 
         <div id="welcome-panel" class="status-overlay">
-            <h2>Waiting for friend...</h2>
-            <p>Share this link to start the call:</p>
-            <div id="invite-link" class="invite-link-box">Generating link...</div>
-            <button class="btn-control btn-active" style="width: auto; padding: 0 30px; border-radius: 30px;" onclick="copyLink()">
-                <i class="fas fa-copy"></i> &nbsp; Copy Link
-            </button>
+            <div id="loading-spinner" class="loader"></div>
+            <h2 id="status-msg">Initializing...</h2>
+            <p id="sub-msg">Please allow camera access.</p>
+            
+            <div id="invite-section" class="hidden">
+                <div id="invite-link" class="invite-link-box">Generating link...</div>
+                <button class="btn-control" style="width: 100%; border-radius: 8px; background: #007bff;" onclick="copyLink()">
+                    <i class="fas fa-copy"></i> &nbsp; Copy Invite Link
+                </button>
+            </div>
         </div>
 
         <div id="join-panel" class="status-overlay hidden">
             <h2>Ready to Join?</h2>
-            <p>You are about to enter the call.</p>
-            <button class="btn-control btn-active" style="width: auto; padding: 0 40px; border-radius: 30px;" onclick="joinCall()">
-                <i class="fas fa-video"></i> &nbsp; Join Now
+            <p>Your friend is waiting.</p>
+            <button class="btn-control" style="width: 100%; border-radius: 8px; background: #28a745;" onclick="joinCall()">
+                <i class="fas fa-video"></i> &nbsp; Join Call Now
             </button>
         </div>
     </div>
@@ -80,7 +88,18 @@
     </div>
 
     <script>
-        const peer = new Peer(); 
+        // --- CONFIGURATION ---
+        // We use Google's public STUN servers to punch through firewalls
+        const peerConfig = {
+            debug: 2, 
+            config: {'iceServers': [
+                { url: 'stun:stun.l.google.com:19302' },
+                { url: 'stun:stun1.l.google.com:19302' },
+                { url: 'stun:stun2.l.google.com:19302' }
+            ]}
+        };
+
+        const peer = new Peer(peerConfig); 
         let myStream;
         let currentCall;
         const urlParams = new URLSearchParams(window.location.search);
@@ -92,43 +111,70 @@
         const welcomePanel = document.getElementById('welcome-panel');
         const joinPanel = document.getElementById('join-panel');
         const inviteLinkBox = document.getElementById('invite-link');
+        const inviteSection = document.getElementById('invite-section');
+        const statusMsg = document.getElementById('status-msg');
+        const subMsg = document.getElementById('sub-msg');
+        const spinner = document.getElementById('loading-spinner');
 
-        // 1. Start Media (Camera/Mic)
+        // --- 1. INITIALIZE CAMERA ---
         navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
             myStream = stream;
             localVideo.srcObject = stream;
+            
+            // Camera is ready, now waiting for Network
+            statusMsg.innerText = "Connecting to Network...";
 
+            // --- 2. PEERJS EVENTS ---
             peer.on('open', (id) => {
+                spinner.style.display = 'none'; // Stop loading
+                
                 if (!friendId) {
-                    // YOU ARE HOST
+                    // HOST MODE
+                    statusMsg.innerText = "You are Online";
+                    subMsg.innerText = "Share this link with your friend:";
+                    inviteSection.classList.remove('hidden');
+                    
                     const link = window.location.href.split('?')[0] + '?call=' + id;
                     inviteLinkBox.innerText = link;
+                    inviteLinkBox.style.color = "#4ade80";
                 } else {
-                    // YOU ARE GUEST
-                    welcomePanel.classList.add('hidden'); // Hide waiting screen
-                    joinPanel.classList.remove('hidden'); // Show join button
+                    // GUEST MODE
+                    welcomePanel.classList.add('hidden');
+                    joinPanel.classList.remove('hidden');
                 }
             });
 
-            // 2. Incoming Call Handler
+            peer.on('error', (err) => {
+                spinner.style.display = 'none';
+                statusMsg.innerText = "Connection Failed";
+                statusMsg.style.color = "#ff4444";
+                subMsg.innerText = "Error: " + err.type;
+                console.error(err);
+                alert("Network Error: Try switching to Mobile Data or turning off AdBlock.");
+            });
+
+            // --- 3. INCOMING CALL (Host) ---
             peer.on('call', (call) => {
-                welcomePanel.classList.add('hidden'); // Hide waiting message
-                call.answer(stream); // Answer with our stream
+                welcomePanel.classList.add('hidden');
+                call.answer(stream); // Answer automatically
                 handleCall(call);
             });
 
         }).catch(err => {
-            alert("Please allow Camera and Microphone access to use this app.");
+            spinner.style.display = 'none';
+            statusMsg.innerText = "Camera Blocked";
+            subMsg.innerText = "Please allow camera access in browser settings.";
+            console.error(err);
         });
 
-        // 3. Join Call Function (Guest)
+        // --- 4. JOIN CALL (Guest) ---
         function joinCall() {
             joinPanel.classList.add('hidden');
             const call = peer.call(friendId, myStream);
             handleCall(call);
         }
 
-        // 4. Handle Stream Logic
+        // --- 5. CALL HANDLING ---
         function handleCall(call) {
             currentCall = call;
             call.on('stream', (remoteStream) => {
@@ -140,28 +186,31 @@
             });
         }
 
-        // 5. Button Features
+        // --- 6. CONTROLS ---
         function toggleAudio() {
-            const audioTrack = myStream.getAudioTracks()[0];
-            audioTrack.enabled = !audioTrack.enabled;
-            document.getElementById('btn-audio').innerHTML = audioTrack.enabled ? '<i class="fas fa-microphone"></i>' : '<i class="fas fa-microphone-slash"></i>';
-            document.getElementById('btn-audio').style.background = audioTrack.enabled ? '#333' : '#dc3545';
+            const track = myStream.getAudioTracks()[0];
+            track.enabled = !track.enabled;
+            const btn = document.getElementById('btn-audio');
+            btn.innerHTML = track.enabled ? '<i class="fas fa-microphone"></i>' : '<i class="fas fa-microphone-slash"></i>';
+            btn.style.background = track.enabled ? '#333' : '#dc3545';
         }
 
         function toggleVideo() {
-            const videoTrack = myStream.getVideoTracks()[0];
-            videoTrack.enabled = !videoTrack.enabled;
-            document.getElementById('btn-video').innerHTML = videoTrack.enabled ? '<i class="fas fa-video"></i>' : '<i class="fas fa-video-slash"></i>';
-            document.getElementById('btn-video').style.background = videoTrack.enabled ? '#333' : '#dc3545';
+            const track = myStream.getVideoTracks()[0];
+            track.enabled = !track.enabled;
+            const btn = document.getElementById('btn-video');
+            btn.innerHTML = track.enabled ? '<i class="fas fa-video"></i>' : '<i class="fas fa-video-slash"></i>';
+            btn.style.background = track.enabled ? '#333' : '#dc3545';
         }
 
         function copyLink() {
-            navigator.clipboard.writeText(inviteLinkBox.innerText).then(() => alert("Link Copied!"));
+            const text = inviteLinkBox.innerText;
+            navigator.clipboard.writeText(text).then(() => alert("Link Copied to Clipboard!"));
         }
 
         function endCall() {
             if(currentCall) currentCall.close();
-            window.location.href = window.location.pathname; // Go back to home
+            window.location.href = window.location.pathname; 
         }
     </script>
 </body>
