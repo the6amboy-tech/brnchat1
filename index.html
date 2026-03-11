@@ -3,174 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Karthik Chat</title>
+    <title>Karthik Video | Simple Connect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { margin: 0; background: #0f172a; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; color: white; }
-        
-        /* VIDEO AREA */
-        .video-stage { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; background: black; }
-        video { width: 100%; height: 100%; object-fit: contain; }
-        #local-video { position: absolute; bottom: 20px; right: 20px; width: 150px; height: 100px; background: #333; border: 2px solid white; transform: scaleX(-1); border-radius: 8px; }
-        #remote-video { transform: scaleX(-1); }
-
-        /* MENU / LOGIN AREA */
-        #menu-overlay { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.95); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        
-        .card { background: #1e293b; padding: 40px; border-radius: 20px; text-align: center; width: 90%; max-width: 350px; border: 1px solid #334155; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-        h1 { margin: 0 0 10px 0; color: #60a5fa; }
-        p { color: #94a3b8; margin-bottom: 20px; }
-
-        input { width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 10px; border: 1px solid #334155; background: #0f172a; color: white; font-size: 18px; text-align: center; box-sizing: border-box; outline: none; transition: 0.3s; }
-        input:focus { border-color: #60a5fa; }
-
-        .btn-group { display: flex; gap: 10px; }
-        button { flex: 1; padding: 15px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; color: white; }
-        
-        .btn-create { background: #2563eb; } /* Blue */
-        .btn-create:hover { background: #1d4ed8; }
-        
-        .btn-join { background: #16a34a; } /* Green */
-        .btn-join:hover { background: #15803d; }
-
-        /* IN-CALL CONTROLS */
-        .controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; z-index: 50; }
-        .circle-btn { width: 50px; height: 50px; border-radius: 50%; border: none; cursor: pointer; font-size: 20px; color: white; background: rgba(255,255,255,0.1); backdrop-filter: blur(5px); }
-        .btn-red { background: #ef4444; }
-
-        .hidden { display: none !important; }
+        body { background-color: #020617; color: white; font-family: ui-sans-serif, system-ui, sans-serif; }
+        .glass { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        video { border-radius: 1.5rem; background: #000; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+        .hidden { display: none; }
     </style>
 </head>
-<body>
+<body class="flex items-center justify-center min-h-screen p-4 overflow-hidden">
 
-    <div class="video-stage">
-        <video id="remote-video" autoplay playsinline></video>
-        <video id="local-video" autoplay playsinline muted></video>
+    <div class="fixed inset-0 pointer-events-none">
+        <div class="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px]"></div>
+        <div class="absolute bottom-0 left-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-[120px]"></div>
+    </div>
+
+    <div id="setup-screen" class="relative z-10 w-full max-w-md glass p-10 rounded-[2.5rem] shadow-2xl text-center">
+        <div class="mb-10">
+            <div class="bg-gradient-to-br from-blue-500 to-indigo-600 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl">
+                <i class="fas fa-video text-3xl text-white"></i>
+            </div>
+            <h1 class="text-4xl font-black tracking-tight mb-2">Connect</h1>
+            <p class="text-slate-400 font-medium">Use a shared code to start video</p>
+        </div>
+
+        <input type="text" id="room-input" placeholder="Enter Code (e.g. 777)" 
+            class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-5 mb-8 text-center text-3xl font-mono tracking-[0.3em] focus:border-blue-500 outline-none transition-all">
         
-        <div class="controls hidden" id="controls">
-            <button class="circle-btn btn-red" onclick="endCall()"><i class="fas fa-phone-slash"></i></button>
+        <div class="flex flex-col gap-4">
+            <button onclick="initCall('host')" class="w-full bg-white text-slate-950 font-bold py-5 rounded-2xl hover:scale-[1.02] active:scale-95 transition-all">
+                Create Room
+            </button>
+            <button onclick="initCall('guest')" class="w-full bg-blue-600 text-white font-bold py-5 rounded-2xl hover:bg-blue-500 hover:scale-[1.02] active:scale-95 transition-all">
+                Join Room
+            </button>
         </div>
     </div>
 
-    <div id="menu-overlay">
-        <div class="card">
-            <h1>Karthik Chat</h1>
-            <p>Enter a Room Code to start.</p>
-            
-            <input type="number" id="room-code" placeholder="e.g. 101" autocomplete="off">
-            
-            <div class="btn-group">
-                <button class="btn-create" onclick="startCall('create')">Create</button>
-                <button class="btn-join" onclick="startCall('join')">Join</button>
+    <div id="video-screen" class="hidden fixed inset-0 z-20 p-6 flex flex-col items-center justify-center">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-6xl h-[70vh]">
+            <div class="relative group">
+                <video id="remote-video" autoplay></video>
+                <div class="absolute bottom-6 left-6 bg-black/40 backdrop-blur-md px-4 py-2 rounded-xl text-sm font-bold">Remote User</div>
             </div>
-            <p id="status-msg" style="margin-top:15px; font-size:12px; height:20px;"></p>
+            <div class="relative group">
+                <video id="local-video" autoplay muted></video>
+                <div class="absolute bottom-6 left-6 bg-black/40 backdrop-blur-md px-4 py-2 rounded-xl text-sm font-bold">You (Self)</div>
+            </div>
+        </div>
+        
+        <div class="mt-10 flex gap-6">
+            <button onclick="location.reload()" class="w-20 h-20 bg-red-600/20 hover:bg-red-600 border border-red-500/50 rounded-full flex items-center justify-center transition-all group">
+                <i class="fas fa-phone-slash text-2xl text-red-500 group-hover:text-white"></i>
+            </button>
         </div>
     </div>
 
     <script>
-        // CONFIG
-        const PREFIX = "brindavan-app-room-"; // Makes your room IDs unique
-        const peer = new Peer({ config: { 'iceServers': [{ url: 'stun:stun.l.google.com:19302' }] } });
-        
-        let myStream;
-        let currentCall;
+        let peer, localStream;
+        const roomInput = document.getElementById('room-input');
 
-        // UI ELEMENTS
-        const menu = document.getElementById('menu-overlay');
-        const controls = document.getElementById('controls');
-        const statusMsg = document.getElementById('status-msg');
-        const localVid = document.getElementById('local-video');
-        const remoteVid = document.getElementById('remote-video');
+        async function initCall(role) {
+            const code = roomInput.value;
+            if (!code) return alert("Please enter a code first!");
 
-        // 1. SETUP CAMERA
-        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-            .then(stream => {
-                myStream = stream;
-                localVid.srcObject = stream;
-            })
-            .catch(err => alert("Camera blocked! Please allow access."));
-
-        // 2. MAIN LOGIC
-        function startCall(action) {
-            const code = document.getElementById('room-code').value.trim();
-            if (!code) {
-                statusMsg.innerText = "Please enter a number first!";
-                statusMsg.style.color = "red";
-                return;
-            }
-
-            const roomID = PREFIX + code;
-            statusMsg.style.color = "#94a3b8";
-
-            if (action === 'create') {
-                // BECOME THE HOST (ID = RoomCode)
-                // We must destroy the old random ID and create a new one with the custom name
-                peer.destroy(); 
-                const hostPeer = new Peer(roomID);
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                document.getElementById('local-video').srcObject = localStream;
                 
-                statusMsg.innerText = "Creating Room... Wait.";
-                
-                hostPeer.on('open', (id) => {
-                    statusMsg.innerText = "Room Ready! Tell friend to join " + code;
-                    statusMsg.style.color = "#4ade80";
-                    // Wait for them to call us
-                    hostPeer.on('call', call => {
-                        enterCallMode();
-                        call.answer(myStream);
-                        handleStream(call);
+                document.getElementById('setup-screen').classList.add('hidden');
+                document.getElementById('video-screen').classList.remove('hidden');
+
+                // Define Unique IDs
+                const hostID = 'k-host-' + code;
+                const guestID = 'k-guest-' + code;
+
+                if (role === 'host') {
+                    peer = new Peer(hostID);
+                    peer.on('call', (call) => {
+                        call.answer(localStream);
+                        call.on('stream', (stream) => {
+                            document.getElementById('remote-video').srcObject = stream;
+                        });
                     });
-                });
-
-                hostPeer.on('error', (err) => {
-                    if(err.type === 'unavailable-id') {
-                        statusMsg.innerText = "Room " + code + " is busy! Try another number.";
-                        statusMsg.style.color = "red";
-                    } else {
-                        statusMsg.innerText = "Network Error. Try again.";
-                    }
-                });
-
-            } else {
-                // JOIN THE HOST
-                statusMsg.innerText = "Connecting to Room " + code + "...";
-                const call = peer.call(roomID, myStream);
-                
-                // If connection works
-                enterCallMode();
-                handleStream(call);
-
-                // If connection fails (after 5 seconds, assume room doesn't exist)
-                setTimeout(() => {
-                    if(!currentCall) {
-                        statusMsg.innerText = "Room not found or busy.";
-                        statusMsg.style.color = "red";
-                        menu.style.display = 'flex'; // Show menu again
-                        controls.classList.add('hidden');
-                    }
-                }, 5000);
+                } else {
+                    peer = new Peer(guestID);
+                    peer.on('open', () => {
+                        const call = peer.call(hostID, localStream);
+                        call.on('stream', (stream) => {
+                            document.getElementById('remote-video').srcObject = stream;
+                        });
+                    });
+                }
+            } catch (err) {
+                alert("Camera access denied or error: " + err.message);
             }
-        }
-
-        // 3. HANDLE VIDEO CONNECTION
-        function handleStream(call) {
-            currentCall = call;
-            call.on('stream', (remoteStream) => {
-                remoteVid.srcObject = remoteStream;
-            });
-            call.on('close', () => endCall());
-            call.on('error', () => endCall());
-        }
-
-        function enterCallMode() {
-            menu.style.display = 'none'; // Hide menu
-            controls.classList.remove('hidden'); // Show hangup button
-        }
-
-        function endCall() {
-            if (currentCall) currentCall.close();
-            location.reload(); // Reset app
         }
     </script>
 </body>
